@@ -1,0 +1,29 @@
+[workspace]
+authors = ["0794xiaobaozi <tonic.song@icloud.com>"]
+channels = ["conda-forge"]
+name = "LocationTracking"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[environments]
+location-tracker = { features = ["location-tracker"] }
+
+[tasks]
+select-intervals = "python SelectVideoIntervals.py"
+
+[dependencies]
+
+[feature.location-tracker.dependencies]
+python = "3.12.*"
+pip = "*"
+numpy = "*"
+pandas = "*"
+scipy = "*"
+matplotlib = "*"
+tqdm = "*"
+opencv = "*"
+pillow = "*"
+
+[feature.location-tracker.pypi-dependencies]
+ipykernel = "*"
+customtkinter = "*"

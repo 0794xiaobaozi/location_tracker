@@ -1,0 +1,20 @@
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# large local data
+video/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+*.m4v
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.csv
+__pycache__/
+*.pyc
