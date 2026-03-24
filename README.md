@@ -1,45 +1,96 @@
-# Location Tracker - Select Interval Module
+# Location Tracker - Interval Selection and Cropping
 
-This repository contains the modernized interval selection workflow used before batch tracking.
+This repository currently publishes two core tools:
 
-## What is included
+1. `SelectVideoIntervals.py`: interactive interval selection for each video.
+2. `CropVideosFromIntervals.py`: batch crop videos based on `video_intervals.json`.
 
-- `SelectVideoIntervals.py`: interval selection tool with modern GUI support.
-- `CropVideosFromIntervals.py`: batch crop tool using `video_intervals.json`.
-- `pixi.toml`: reproducible environment configuration.
+---
 
-## Main features
-
-- Single-window modern GUI (`customtkinter`) for selecting intervals across multiple videos.
-- Keyboard shortcuts:
-  - `S` set start
-  - `E` set end (manual mode)
-  - `Enter` confirm
-  - `Q` skip
-  - `Space` play/pause
-  - Arrow keys for navigation
-- Auto interval modes:
-  - `--auto-5min`
-  - `--auto-10min`
-- Progress timeline with highlighted selected interval.
-
-## Environment setup (pixi)
+## 1) Setup environment (pixi)
 
 ```bash
 pixi install -e location-tracker
 ```
 
-## Run
+Use `pixi run ... python ...` (or `pixi shell -e location-tracker` then `python ...`).
+Avoid `py ...` to prevent interpreter mismatch.
+
+---
+
+## 2) Function A: Select intervals
+
+### What it does
+
+- Scans a video directory.
+- Lets you choose `start_frame` and `end_frame` (or auto-duration from start).
+- Saves results to `video_intervals.json` in the same directory (unless `--output` is provided).
+
+### Recommended command (modern GUI + auto 5 min)
 
 ```bash
 pixi run -e location-tracker python SelectVideoIntervals.py -d "F:\Neuro\ezTrack\LocationTracking\video\EPM_later" --auto-5min --gui modern
 ```
 
+### Common options
+
+- `--gui modern|classic` GUI backend (default: `modern`)
+- `--auto-5min` auto end = start + 5 minutes
+- `--auto-10min` auto end = start + 10 minutes
+- `--exclude <file>` skip specific video file (can repeat)
+- `--output <path>` custom JSON output path
+
+### Shortcuts (modern GUI)
+
+- `S`: set start
+- `E`: set end (manual mode only)
+- `Enter`: confirm current video
+- `Q`: skip current video
+- `Space`: play/pause
+- `Left/Right`: -/+10 frames
+- `Up/Down`: -/+100 frames
+- `R`: reset interval
+
+---
+
+## 3) Function B: Crop videos from selected intervals
+
+### What it does
+
+- Reads `video_intervals.json`.
+- Exports cropped segments for all matched videos.
+- Writes output to `cropped_video` folder while keeping directory structure.
+
+### Recommended command
+
 ```bash
 pixi run -e location-tracker python CropVideosFromIntervals.py --directory "F:\Neuro\ezTrack\LocationTracking\video\EPM_later"
 ```
 
+### Useful options
+
+- `--directory` process one or more directories (repeatable)
+- `--recursive` recursively find all directories containing `video_intervals.json`
+- `--intervals-file` specify a custom intervals JSON file
+- `--output-dir` customize output folder name (default: `cropped_video`)
+
+---
+
+## 4) Typical workflow
+
+1. Select intervals:
+   `SelectVideoIntervals.py` -> generates `video_intervals.json`
+2. Crop videos:
+   `CropVideosFromIntervals.py` -> exports clipped videos to `cropped_video`
+3. Continue with downstream tracking/statistics on cropped outputs.
+
+---
+
 ## Notes
 
-- Use `python` inside pixi (`pixi run ...`) instead of `py` to avoid interpreter mismatch.
-- Video/data outputs are ignored by git via `.gitignore`.
+- Large local data files are ignored via `.gitignore`.
+- If GUI does not appear, verify environment and imports first:
+
+```bash
+pixi run -e location-tracker python -c "import customtkinter, cv2; print('ok')"
+```
