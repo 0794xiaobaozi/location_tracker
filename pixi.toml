@@ -23,6 +23,8 @@ matplotlib = "*"
 tqdm = "*"
 opencv = "*"
 pillow = "*"
+holoviews = ">=1.22.1,<2"
+bokeh = ">=3.9.0,<4"
 
 [feature.location-tracker.pypi-dependencies]
 ipykernel = "*"

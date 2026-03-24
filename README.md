@@ -4,6 +4,7 @@ This repository currently publishes two core tools:
 
 1. `SelectVideoIntervals.py`: interactive interval selection for each video.
 2. `CropVideosFromIntervals.py`: batch crop videos based on `video_intervals.json`.
+3. `RunLocationTrackingBatch.py`: CLI batch location tracking (no notebook).
 
 ---
 
@@ -82,7 +83,28 @@ pixi run -e location-tracker python CropVideosFromIntervals.py --directory "F:\N
    `SelectVideoIntervals.py` -> generates `video_intervals.json`
 2. Crop videos:
    `CropVideosFromIntervals.py` -> exports clipped videos to `cropped_video`
-3. Continue with downstream tracking/statistics on cropped outputs.
+3. Track locations:
+   `RunLocationTrackingBatch.py` -> generates `*_LocationOutput.csv` and `BatchSummary.csv`
+4. Continue with downstream statistics/visualization.
+
+---
+
+## 5) Function C: Batch location tracking (CLI, no notebook)
+
+### Recommended command
+
+```bash
+pixi run -e location-tracker python RunLocationTrackingBatch.py --directory "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later" --ftype mp4 --loc-thresh 99.0 --parallel
+```
+
+### Useful options
+
+- `--parallel` enable multiprocessing
+- `--n-processes` set process count (default: auto)
+- `--loc-thresh` tracking threshold percentile
+- `--method abs|light|dark`
+- `--use-window --window-size --window-weight`
+- `--accept-p-frames` allow p-frame videos
 
 ---
 
