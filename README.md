@@ -141,7 +141,32 @@ YAML run options:
 
 ---
 
-## 4) Required files for YAML workflow
+## 4) Result Visualization
+
+### Trajectory figure images (one image per video)
+
+Script: `visualization/GenerateTrajectoryImages.py`
+
+Recommended command (load settings from project YAML):
+
+```bash
+pixi run -e location-tracker python visualization/GenerateTrajectoryImages.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+```
+
+Output:
+
+- Per video: `*_Trajectory.png`
+
+Notes:
+
+- Visualization scripts are organized under `visualization/`.
+- `--config` auto-loads `video_dir`, `analysis_roi`, and `functional_roi`.
+- Config `crop` is applied by default (YAML is treated as source of truth).
+- Use `--skip-config-crop` if you want full-frame background without applying YAML crop.
+
+---
+
+## 5) Required files for YAML workflow
 
 - `LocationTracking_Functions.py`
 - `RunLocationTrackingFromYAML.py`
@@ -151,7 +176,7 @@ YAML run options:
 
 ---
 
-## 5) Notes
+## 6) Notes
 
 - Large local data files are ignored via `.gitignore`.
 - If GUI does not appear, test environment quickly:
