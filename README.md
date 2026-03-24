@@ -1,50 +1,52 @@
-# Location Tracker - Interval, Crop, and YAML Tracking
+# Location Tracker
 
-This repository publishes the following core tools:
+This repo has two parts:
 
-1. `SelectVideoIntervals.py`: interactive interval selection for each video.
-2. `CropVideosFromIntervals.py`: batch crop videos based on `video_intervals.json`.
-3. `RunLocationTrackingBatch.py`: CLI batch location tracking (no notebook).
-4. `CreateLocationTrackingYAMLTemplate.py`: generate a project YAML template.
-5. `BuildTrackingConfigGUI.py`: GUI to create/edit tracking YAML.
-6. `RunLocationTrackingFromYAML.py`: run full tracking directly from YAML.
+1. **Crop workflow** (select interval -> export cropped videos)
+2. **Tracking workflow** (run location tracking on cropped videos)
 
 ---
 
-## 1) Setup environment (pixi)
+## 1) Setup
 
 ```bash
 pixi install -e location-tracker
 ```
 
-Use `pixi run ... python ...` (or `pixi shell -e location-tracker` then `python ...`).
+Run commands with:
+
+```bash
+pixi run -e location-tracker python <script>.py ...
+```
+
 Avoid `py ...` to prevent interpreter mismatch.
 
 ---
 
-## 2) Function A: Select intervals
+## 2) Crop Workflow
 
-### What it does
+Use these two scripts together.
 
-- Scans a video directory.
-- Lets you choose `start_frame` and `end_frame` (or auto-duration from start).
-- Saves results to `video_intervals.json` in the same directory (unless `--output` is provided).
+### Step 2.1 Select video intervals
 
-### Recommended command (modern GUI + auto 5 min)
+Script: `SelectVideoIntervals.py`
 
 ```bash
 pixi run -e location-tracker python SelectVideoIntervals.py -d "F:\Neuro\ezTrack\LocationTracking\video\EPM_later" --auto-5min --gui modern
 ```
 
-### Common options
+Output:
 
-- `--gui modern|classic` GUI backend (default: `modern`)
-- `--auto-5min` auto end = start + 5 minutes
-- `--auto-10min` auto end = start + 10 minutes
-- `--exclude <file>` skip specific video file (can repeat)
-- `--output <path>` custom JSON output path
+- `video_intervals.json` in the video directory
 
-### Shortcuts (modern GUI)
+Common options:
+
+- `--gui modern|classic`
+- `--auto-5min` / `--auto-10min`
+- `--exclude <file>` (repeatable)
+- `--output <path>`
+
+Modern GUI shortcuts:
 
 - `S`: set start
 - `E`: set end (manual mode only)
@@ -55,129 +57,104 @@ pixi run -e location-tracker python SelectVideoIntervals.py -d "F:\Neuro\ezTrack
 - `Up/Down`: -/+100 frames
 - `R`: reset interval
 
----
+### Step 2.2 Crop videos from intervals
 
-## 3) Function B: Crop videos from selected intervals
-
-### What it does
-
-- Reads `video_intervals.json`.
-- Exports cropped segments for all matched videos.
-- Writes output to `cropped_video` folder while keeping directory structure.
-
-### Recommended command
+Script: `CropVideosFromIntervals.py`
 
 ```bash
 pixi run -e location-tracker python CropVideosFromIntervals.py --directory "F:\Neuro\ezTrack\LocationTracking\video\EPM_later"
 ```
 
-### Useful options
+Output:
 
-- `--directory` process one or more directories (repeatable)
-- `--recursive` recursively find all directories containing `video_intervals.json`
-- `--intervals-file` specify a custom intervals JSON file
-- `--output-dir` customize output folder name (default: `cropped_video`)
+- Cropped videos under `cropped_video` (same directory structure preserved)
 
----
+Common options:
 
-## 4) Typical workflow
-
-1. Select intervals:
-   `SelectVideoIntervals.py` -> generates `video_intervals.json`
-2. Crop videos:
-   `CropVideosFromIntervals.py` -> exports clipped videos to `cropped_video`
-3. Track locations:
-   `RunLocationTrackingBatch.py` -> generates `*_LocationOutput.csv` and `BatchSummary.csv`
-4. Continue with downstream statistics/visualization.
+- `--directory` (repeatable)
+- `--recursive`
+- `--intervals-file`
+- `--output-dir` (default: `cropped_video`)
 
 ---
 
-## 5) Function C: Batch location tracking (CLI, no notebook)
+## 3) Tracking Workflow
 
-### Recommended command
+Tracking supports two entry modes:
+
+- **Simple CLI mode**: `RunLocationTrackingBatch.py`
+- **YAML mode** (recommended for reproducibility): template/GUI + `RunLocationTrackingFromYAML.py`
+
+### Option A: Simple CLI tracking
+
+Script: `RunLocationTrackingBatch.py`
 
 ```bash
 pixi run -e location-tracker python RunLocationTrackingBatch.py --directory "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later" --ftype mp4 --loc-thresh 99.0 --parallel
 ```
 
-### Useful options
+Useful options:
 
-- `--parallel` enable multiprocessing
-- `--n-processes` set process count (default: auto)
-- `--loc-thresh` tracking threshold percentile
+- `--parallel`
+- `--n-processes`
+- `--loc-thresh`
 - `--method abs|light|dark`
 - `--use-window --window-size --window-weight`
-- `--accept-p-frames` allow p-frame videos
+- `--accept-p-frames`
 
----
+### Option B: YAML tracking (recommended)
 
-## 6) Function D: YAML template generation
+#### Step B1 Generate YAML template
 
-### What it does
-
-- Creates a project config file for tracking runs.
-- Pre-fills project/video fields and all major tracking options.
-
-### Recommended command
+Script: `CreateLocationTrackingYAMLTemplate.py`
 
 ```bash
 pixi run -e location-tracker python CreateLocationTrackingYAMLTemplate.py --output ".\project_tracking_config.yml" --video-dir "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later"
 ```
 
----
+#### Step B2 Edit YAML in GUI (optional)
 
-## 7) Function E: Build/Edit YAML via GUI
-
-### What it does
-
-- Opens a modern GUI for configuring crop, analysis ROI, functional ROIs, scale, and tracking params.
-- Saves settings to a YAML file used by the runner script.
-
-### Recommended command
+Script: `BuildTrackingConfigGUI.py`
 
 ```bash
 pixi run -e location-tracker python BuildTrackingConfigGUI.py
 ```
 
----
+#### Step B3 Run tracking from YAML
 
-## 8) Function F: Run tracking from YAML
-
-### What it does
-
-- Loads one YAML file and runs batch location tracking end-to-end.
-- Outputs `*_LocationOutput.csv` for each video and `BatchSummary.csv` for aggregate statistics.
-
-### Recommended command
+Script: `RunLocationTrackingFromYAML.py`
 
 ```bash
 pixi run -e location-tracker python RunLocationTrackingFromYAML.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
 ```
 
-### Typical YAML run options
+YAML run options:
 
-- `run.parallel`: enable multiprocessing
-- `run.n_processes`: process count (`null` = auto)
-- `run.accept_p_frames`: allow/disallow p-frame videos
+- `run.parallel`
+- `run.n_processes` (`null` = auto)
+- `run.accept_p_frames`
 
----
+### Tracking outputs
 
-## 9) Files required for YAML workflow
-
-If you publish YAML workflow scripts, also include these dependencies in the same repository:
-
-- `LocationTracking_Functions.py` (core tracking library, required)
-- `RunLocationTrackingFromYAML.py` (YAML runner, required)
-- `CreateLocationTrackingYAMLTemplate.py` (template generator)
-- `BuildTrackingConfigGUI.py` (YAML builder GUI)
-- `pixi.toml` / `pixi.lock` (reproducible environment)
+- Per video: `*_LocationOutput.csv`
+- Batch summary: `BatchSummary.csv`
 
 ---
 
-## Notes
+## 4) Required files for YAML workflow
+
+- `LocationTracking_Functions.py`
+- `RunLocationTrackingFromYAML.py`
+- `CreateLocationTrackingYAMLTemplate.py`
+- `BuildTrackingConfigGUI.py`
+- `pixi.toml` / `pixi.lock`
+
+---
+
+## 5) Notes
 
 - Large local data files are ignored via `.gitignore`.
-- If GUI does not appear, verify environment and imports first:
+- If GUI does not appear, test environment quickly:
 
 ```bash
 pixi run -e location-tracker python -c "import customtkinter, cv2; print('ok')"
