@@ -5,6 +5,7 @@ This repository contains the modernized interval selection workflow used before 
 ## What is included
 
 - `SelectVideoIntervals.py`: interval selection tool with modern GUI support.
+- `CropVideosFromIntervals.py`: batch crop tool using `video_intervals.json`.
 - `pixi.toml`: reproducible environment configuration.
 
 ## Main features
@@ -32,6 +33,10 @@ pixi install -e location-tracker
 
 ```bash
 pixi run -e location-tracker python SelectVideoIntervals.py -d "F:\Neuro\ezTrack\LocationTracking\video\EPM_later" --auto-5min --gui modern
+```
+
+```bash
+pixi run -e location-tracker python CropVideosFromIntervals.py --directory "F:\Neuro\ezTrack\LocationTracking\video\EPM_later"
 ```
 
 ## Notes
