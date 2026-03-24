@@ -85,7 +85,39 @@ Tracking supports two entry modes:
 - **Simple CLI mode**: `RunLocationTrackingBatch.py`
 - **YAML mode** (recommended for reproducibility): template/GUI + `RunLocationTrackingFromYAML.py`
 
-### Option A: Simple CLI tracking
+### Option A: YAML tracking (recommended)
+
+#### Step A1 Generate YAML template
+
+Script: `CreateLocationTrackingYAMLTemplate.py`
+
+```bash
+pixi run -e location-tracker python CreateLocationTrackingYAMLTemplate.py --output ".\project_tracking_config.yml" --video-dir "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later"
+```
+
+#### Step A2 Edit YAML in GUI (optional)
+
+Script: `BuildTrackingConfigGUI.py`
+
+```bash
+pixi run -e location-tracker python BuildTrackingConfigGUI.py
+```
+
+#### Step A3 Run tracking from YAML
+
+Script: `RunLocationTrackingFromYAML.py`
+
+```bash
+pixi run -e location-tracker python RunLocationTrackingFromYAML.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+```
+
+YAML run options:
+
+- `run.parallel`
+- `run.n_processes` (`null` = auto)
+- `run.accept_p_frames`
+
+### Option B: Simple CLI tracking
 
 Script: `RunLocationTrackingBatch.py`
 
@@ -101,38 +133,6 @@ Useful options:
 - `--method abs|light|dark`
 - `--use-window --window-size --window-weight`
 - `--accept-p-frames`
-
-### Option B: YAML tracking (recommended)
-
-#### Step B1 Generate YAML template
-
-Script: `CreateLocationTrackingYAMLTemplate.py`
-
-```bash
-pixi run -e location-tracker python CreateLocationTrackingYAMLTemplate.py --output ".\project_tracking_config.yml" --video-dir "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later"
-```
-
-#### Step B2 Edit YAML in GUI (optional)
-
-Script: `BuildTrackingConfigGUI.py`
-
-```bash
-pixi run -e location-tracker python BuildTrackingConfigGUI.py
-```
-
-#### Step B3 Run tracking from YAML
-
-Script: `RunLocationTrackingFromYAML.py`
-
-```bash
-pixi run -e location-tracker python RunLocationTrackingFromYAML.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
-```
-
-YAML run options:
-
-- `run.parallel`
-- `run.n_processes` (`null` = auto)
-- `run.accept_p_frames`
 
 ### Tracking outputs
 
@@ -163,6 +163,28 @@ Notes:
 - `--config` auto-loads `video_dir`, `analysis_roi`, and `functional_roi`.
 - Config `crop` is applied by default (YAML is treated as source of truth).
 - Use `--skip-config-crop` if you want full-frame background without applying YAML crop.
+
+### Tracking overlay videos (single or batch, both config-driven)
+
+Script: `visualization/GenerateTrackingOverlayVideos.py`
+
+Single video (still reads YAML for crop/video_dir):
+
+```bash
+pixi run -e location-tracker python visualization/GenerateTrackingOverlayVideos.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --video "1-5.mp4"
+```
+
+Batch (all videos from YAML `project.video_dir`):
+
+```bash
+pixi run -e location-tracker python visualization/GenerateTrackingOverlayVideos.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+```
+
+Output:
+
+- Single mode: `*_TrackingOverlay.mp4`
+- Batch mode: one `*_TrackingOverlay.mp4` per video
+- Both modes read the same YAML config by default
 
 ---
 

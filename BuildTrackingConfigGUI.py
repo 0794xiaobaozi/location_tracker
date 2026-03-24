@@ -112,7 +112,7 @@ class TrackingConfigBuilderApp:
         self.loc_thresh_entry.insert(0, "99.5")
         self.loc_thresh_entry.pack(side="left", padx=(6, 16))
 
-        self.use_window_var = tk.BooleanVar(value=True)
+        self.use_window_var = tk.BooleanVar(value=False)
         ctk.CTkCheckBox(row1, text="use_window", variable=self.use_window_var).pack(side="left", padx=(0, 16))
 
         ctk.CTkLabel(row1, text="window_size").pack(side="left")
