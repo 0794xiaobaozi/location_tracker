@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from scipy import stats
 from pathlib import Path
+import yaml
 
 # Fix encoding for Windows
 if sys.platform == 'win32':
@@ -29,7 +30,70 @@ def classify_group(video_name):
         return 'Control'
 
 
-def calculate_open_arms_metrics(directory):
+def normalize_video_id(video_name):
+    """Normalize video identifiers across .mp4 / _LocationOutput naming variants."""
+    v = str(video_name)
+    if v.endswith("_LocationOutput"):
+        v = v[: -len("_LocationOutput")]
+    if v.lower().endswith(".mp4"):
+        v = v[:-4]
+    return v
+
+
+def load_group_map_from_yaml(group_config_path):
+    """Load external grouping YAML.
+
+    Supported YAML structure:
+    groups:
+      Control: [1-1, 1-2]
+      pp3r1: [3p-1, 3p-2]
+    """
+    with open(group_config_path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    if not isinstance(cfg, dict):
+        raise ValueError("Group YAML root must be a mapping/object.")
+
+    groups = cfg.get("groups")
+    if not isinstance(groups, dict) or not groups:
+        raise KeyError("Group YAML must contain a non-empty 'groups' mapping.")
+
+    group_map = {}
+    group_order = []
+    for group_name, videos in groups.items():
+        if not isinstance(videos, list):
+            raise ValueError(f"Group '{group_name}' must map to a list of video IDs.")
+        group_name = str(group_name)
+        group_order.append(group_name)
+        for item in videos:
+            vid = normalize_video_id(item)
+            if vid in group_map and group_map[vid] != group_name:
+                raise ValueError(
+                    f"Video '{vid}' is assigned to multiple groups: "
+                    f"'{group_map[vid]}' and '{group_name}'."
+                )
+            group_map[vid] = group_name
+
+    if len(group_order) != 2:
+        raise ValueError(
+            f"EPM bar charts require exactly 2 groups; got {len(group_order)} in group config."
+        )
+    return group_map, group_order
+
+
+def _parse_open_arms_text(open_arms_text):
+    names = [x.strip() for x in str(open_arms_text).split(",") if x.strip()]
+    if not names:
+        raise ValueError("Open arms list is empty. Use names like 'Top,Bottom'.")
+    return names
+
+
+def calculate_open_arms_metrics(
+    directory,
+    group_map=None,
+    group_order=None,
+    open_arm_names=None,
+    closed_arm_names=None,
+):
     """Calculate all open arms metrics from statistics files"""
     directory = Path(directory)
     
@@ -38,7 +102,13 @@ def calculate_open_arms_metrics(directory):
     time_file = directory / 'ROI_Statistics_Detailed.csv'
     
     if not entry_file.exists() or not time_file.exists():
-        print("[ERROR] Statistics files not found")
+        missing = []
+        if not entry_file.exists():
+            missing.append(entry_file.name)
+        if not time_file.exists():
+            missing.append(time_file.name)
+        print(f"[ERROR] Statistics files not found in {directory}")
+        print(f"[ERROR] Missing: {', '.join(missing)}")
         return None
     
     entry_df = pd.read_csv(entry_file)
@@ -48,15 +118,65 @@ def calculate_open_arms_metrics(directory):
     df = pd.merge(entry_df, time_df, on='Video')
     
     # Add group column
-    df['Group'] = df['Video'].apply(classify_group)
+    if group_map is not None:
+        def _assign_from_group_yaml(video_name):
+            key = normalize_video_id(video_name)
+            if key not in group_map:
+                raise KeyError(
+                    f"Video '{video_name}' not found in group config. "
+                    "Please add it to the grouping YAML."
+                )
+            return group_map[key]
+
+        df['Group'] = df['Video'].apply(_assign_from_group_yaml)
+    else:
+        # Backward-compatible fallback
+        df['Group'] = df['Video'].apply(classify_group)
+        if group_order is None:
+            group_order = ['Control', 'pp3r1']
     
-    # Calculate open arms metrics
-    df['OpenArms_Time_sec'] = df['Left_sec'] + df['Right_sec']
-    df['OpenArms_Entries'] = df['Left_entries'] + df['Right_entries']
+    # Infer available ROI names from *_sec and *_entries columns.
+    sec_roi_names = {c[:-4] for c in df.columns if c.endswith("_sec")}
+    entry_roi_names = {c[:-8] for c in df.columns if c.endswith("_entries")}
+    available_roi_names = sorted(sec_roi_names.intersection(entry_roi_names))
+    if not available_roi_names:
+        raise ValueError("Cannot infer ROI names from statistics files.")
+
+    if open_arm_names is None or closed_arm_names is None:
+        raise ValueError("Both open_arm_names and closed_arm_names must be provided.")
+
+    missing = [n for n in open_arm_names if n not in available_roi_names]
+    if missing:
+        raise KeyError(
+            f"Open arms contain unknown ROI names: {missing}. "
+            f"Available ROI names: {available_roi_names}"
+        )
+    missing = [n for n in closed_arm_names if n not in available_roi_names]
+    if missing:
+        raise KeyError(
+            f"Closed arms contain unknown ROI names: {missing}. "
+            f"Available ROI names: {available_roi_names}"
+        )
+    overlap = sorted(set(open_arm_names).intersection(set(closed_arm_names)))
+    if overlap:
+        raise ValueError(f"Open/closed arms overlap is not allowed: {overlap}")
+
+    # Calculate open/closed arms metrics based on configured ROI names.
+    df['OpenArms_Time_sec'] = sum(df[f"{name}_sec"] for name in open_arm_names)
+    df['OpenArms_Entries'] = sum(df[f"{name}_entries"] for name in open_arm_names)
     df['OpenArms_Time_pct'] = (df['OpenArms_Time_sec'] / df['Total_ROI_sec']) * 100
     df['OpenArms_Entries_pct'] = (df['OpenArms_Entries'] / df['Total_entries']) * 100
+
+    if closed_arm_names:
+        df['ClosedArms_Time_sec'] = sum(df[f"{name}_sec"] for name in closed_arm_names)
+        df['ClosedArms_Entries'] = sum(df[f"{name}_entries"] for name in closed_arm_names)
+    else:
+        df['ClosedArms_Time_sec'] = 0.0
+        df['ClosedArms_Entries'] = 0.0
+    df['ClosedArms_Time_pct'] = (df['ClosedArms_Time_sec'] / df['Total_ROI_sec']) * 100
+    df['ClosedArms_Entries_pct'] = (df['ClosedArms_Entries'] / df['Total_entries']) * 100
     
-    return df
+    return df, group_order, open_arm_names, closed_arm_names
 
 
 def perform_statistical_test(control_data, pp3r1_data):
@@ -75,8 +195,20 @@ def perform_statistical_test(control_data, pp3r1_data):
     return p_value, sig_level
 
 
-def create_bar_chart(ax, control_mean, control_sem, pp3r1_mean, pp3r1_sem,
-                     ylabel, title, p_value, sig_level, y_max=None):
+def create_bar_chart(
+    ax,
+    control_mean,
+    control_sem,
+    pp3r1_mean,
+    pp3r1_sem,
+    control_data,
+    pp3r1_data,
+    ylabel,
+    title,
+    p_value,
+    sig_level,
+    y_max=None,
+):
     """Create a single bar chart with exact styling matching reference image"""
     
     # Data for plotting
@@ -100,6 +232,28 @@ def create_bar_chart(ax, control_mean, control_sem, pp3r1_mean, pp3r1_sem,
                    color=colors, width=bar_width, edgecolor='none',
                    error_kw={'elinewidth': 2.0, 'capthick': 2.0, 'capsize': 5},
                    zorder=3)
+
+    # Overlay individual data points for each bar
+    # Use deterministic jitter for reproducible plotting
+    rng = np.random.default_rng(42)
+    point_kwargs = dict(s=20, c="black", alpha=0.8, linewidths=0, zorder=4)
+    # Make jitter width one-third of previous total width
+    # Previous clip range was +/- 0.38*bar_width (total 0.76*bar_width).
+    # New total width = (0.76/3)*bar_width, i.e. +/- 0.126666...*bar_width.
+    jitter_scale = bar_width * 0.073
+
+    def _plot_points(center_x, values):
+        vals = np.asarray(values, dtype=float)
+        vals = vals[~np.isnan(vals)]
+        if vals.size == 0:
+            return
+        jitter = rng.normal(loc=0.0, scale=jitter_scale, size=vals.size)
+        jitter = np.clip(jitter, -bar_width * 0.1267, bar_width * 0.1267)
+        xs = center_x + jitter
+        ax.scatter(xs, vals, **point_kwargs)
+
+    _plot_points(x_pos[0], control_data)
+    _plot_points(x_pos[1], pp3r1_data)
     
     # Set y-axis limits: max value should be 3/2 (1.5x) of the highest bar (including error bar)
     if y_max is None:
@@ -172,7 +326,14 @@ def create_bar_chart(ax, control_mean, control_sem, pp3r1_mean, pp3r1_sem,
     ax.yaxis.set_major_locator(MaxNLocator(integer=False, nbins=6))
 
 
-def generate_epm_bar_charts(directory, output_path=None):
+def generate_epm_bar_charts(
+    directory,
+    output_path=None,
+    group_map=None,
+    group_order=None,
+    open_arm_names=None,
+    closed_arm_names=None,
+):
     """Generate the complete 2x3 grid of bar charts"""
     
     print("=" * 80)
@@ -180,16 +341,26 @@ def generate_epm_bar_charts(directory, output_path=None):
     print("=" * 80)
     
     # Calculate metrics
-    df = calculate_open_arms_metrics(directory)
-    if df is None:
+    result = calculate_open_arms_metrics(
+        directory,
+        group_map=group_map,
+        group_order=group_order,
+        open_arm_names=open_arm_names,
+        closed_arm_names=closed_arm_names,
+    )
+    if result is None:
         return
+    df, group_order, open_arm_names, closed_arm_names = result
     
     # Separate groups
-    control_df = df[df['Group'] == 'Control'].copy()
-    pp3r1_df = df[df['Group'] == 'pp3r1'].copy()
+    group_a, group_b = group_order[0], group_order[1]
+    control_df = df[df['Group'] == group_a].copy()
+    pp3r1_df = df[df['Group'] == group_b].copy()
     
-    print(f"Control group: {len(control_df)} animals")
-    print(f"pp3r1 group: {len(pp3r1_df)} animals")
+    print(f"{group_a} group: {len(control_df)} animals")
+    print(f"{group_b} group: {len(pp3r1_df)} animals")
+    print(f"Open arms ROI(s): {', '.join(open_arm_names)}")
+    print(f"Closed arms ROI(s): {', '.join(closed_arm_names)}")
     
     # Calculate means and SEMs for all metrics
     metrics = {
@@ -199,10 +370,22 @@ def generate_epm_bar_charts(directory, output_path=None):
             'ylabel': 'Time in Open Arms (s)',
             'y_max': 200
         },
+        'Time in Closed Arms (s)': {
+            'control_col': 'ClosedArms_Time_sec',
+            'pp3r1_col': 'ClosedArms_Time_sec',
+            'ylabel': 'Time in Closed Arms (s)',
+            'y_max': 200
+        },
         'Entries into Open Arms': {
             'control_col': 'OpenArms_Entries',
             'pp3r1_col': 'OpenArms_Entries',
             'ylabel': 'Entries into Open Arms',
+            'y_max': 30
+        },
+        'Entries into Closed Arms': {
+            'control_col': 'ClosedArms_Entries',
+            'pp3r1_col': 'ClosedArms_Entries',
+            'ylabel': 'Entries into Closed Arms',
             'y_max': 30
         },
         '% Time in Open Arms': {
@@ -211,10 +394,22 @@ def generate_epm_bar_charts(directory, output_path=None):
             'ylabel': '% Time in Open Arms',
             'y_max': 60
         },
+        '% Time in Closed Arms': {
+            'control_col': 'ClosedArms_Time_pct',
+            'pp3r1_col': 'ClosedArms_Time_pct',
+            'ylabel': '% Time in Closed Arms',
+            'y_max': 60
+        },
         '% Entries into Open Arms': {
             'control_col': 'OpenArms_Entries_pct',
             'pp3r1_col': 'OpenArms_Entries_pct',
             'ylabel': '% Entries into Open Arms',
+            'y_max': 60
+        },
+        '% Entries into Closed Arms': {
+            'control_col': 'ClosedArms_Entries_pct',
+            'pp3r1_col': 'ClosedArms_Entries_pct',
+            'ylabel': '% Entries into Closed Arms',
             'y_max': 60
         },
         'Total Distance (mm)': {
@@ -231,11 +426,11 @@ def generate_epm_bar_charts(directory, output_path=None):
         }
     }
     
-    # Create figure with 2x3 subplots - no title to match reference
+    # Create figure with 2x5 subplots - no title to match reference
     # Set figure style to match reference
     plt.rcParams['font.family'] = 'Arial'
     plt.rcParams['font.sans-serif'] = ['Arial']
-    fig, axes = plt.subplots(2, 3, figsize=(14, 9), facecolor='white')
+    fig, axes = plt.subplots(2, 5, figsize=(22, 9), facecolor='white')
     # Remove title to match reference image style
     
     # Flatten axes for easier indexing
@@ -244,9 +439,13 @@ def generate_epm_bar_charts(directory, output_path=None):
     # Metric order matching the image layout
     metric_order = [
         'Time in Open Arms (s)',
+        'Time in Closed Arms (s)',
         'Entries into Open Arms',
+        'Entries into Closed Arms',
         '% Time in Open Arms',
+        '% Time in Closed Arms',
         '% Entries into Open Arms',
+        '% Entries into Closed Arms',
         'Total Distance (mm)',
         'Total Entries'
     ]
@@ -270,14 +469,26 @@ def generate_epm_bar_charts(directory, output_path=None):
         p_value, sig_level = perform_statistical_test(control_data, pp3r1_data)
         
         print(f"\n{metric_name}:")
-        print(f"  Control: {control_mean:.2f} ± {control_sem:.2f}")
-        print(f"  pp3r1: {pp3r1_mean:.2f} ± {pp3r1_sem:.2f}")
+        print(f"  {group_a}: {control_mean:.2f} ± {control_sem:.2f}")
+        print(f"  {group_b}: {pp3r1_mean:.2f} ± {pp3r1_sem:.2f}")
         print(f"  p-value: {p_value:.4f} ({sig_level})")
         
         # Create bar chart (y_max=None to auto-calculate as 1.5x of highest bar)
-        create_bar_chart(ax, control_mean, control_sem, pp3r1_mean, pp3r1_sem,
-                        metric_info['ylabel'], metric_name, p_value, sig_level,
-                        y_max=None)  # Auto-calculate as 3/2 of highest bar value
+        create_bar_chart(
+            ax,
+            control_mean,
+            control_sem,
+            pp3r1_mean,
+            pp3r1_sem,
+            control_data,
+            pp3r1_data,
+            metric_info['ylabel'],
+            metric_name,
+            p_value,
+            sig_level,
+            y_max=None,
+        )  # Auto-calculate as 3/2 of highest bar value
+        ax.set_xticklabels([group_a, group_b], fontsize=11, fontweight='bold', family='Arial')
     
     # Adjust layout - spacing to match reference
     plt.tight_layout(rect=[0, 0, 1, 1])
@@ -304,16 +515,82 @@ def generate_epm_bar_charts(directory, output_path=None):
     print("=" * 80)
 
 
+def load_video_dir_from_config(config_path):
+    with open(config_path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    if not isinstance(cfg, dict):
+        raise ValueError("YAML root must be a mapping/object.")
+
+    project = cfg.get("project", {}) or {}
+    video_dir = project.get("video_dir")
+    if not video_dir:
+        raise KeyError("Missing required key: project.video_dir")
+    return str(Path(video_dir))
+
+
 if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser(description='Generate EPM bar charts')
-    parser.add_argument('--directory', type=str, required=True,
+    parser.add_argument('--directory', type=str, default=None,
                        help='Directory containing statistics files')
+    parser.add_argument('--config', type=str, default=None,
+                       help='Project YAML config path (auto-loads project.video_dir)')
+    parser.add_argument('--group-config', type=str, default=None,
+                       help='Path to grouping YAML with a top-level "groups" mapping')
+    parser.add_argument('--open-arms', type=str, default=None,
+                       help='Comma-separated ROI names treated as open arms (e.g., "Top,Bottom")')
+    parser.add_argument('--closed-arms', type=str, default=None,
+                       help='Comma-separated ROI names treated as closed arms (e.g., "Left,Right")')
     parser.add_argument('--output', type=str, default=None,
                        help='Output file path (optional)')
     
     args = parser.parse_args()
-    
-    generate_epm_bar_charts(args.directory, args.output)
+    directory = args.directory
+
+    if args.config:
+        try:
+            directory = load_video_dir_from_config(args.config)
+            print(f"[INFO] Loaded directory from config: {directory}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load config: {e}")
+            sys.exit(1)
+
+    if not directory:
+        print("[ERROR] You must provide --directory or --config")
+        sys.exit(1)
+
+    group_map = None
+    group_order = None
+    if args.group_config:
+        try:
+            group_map, group_order = load_group_map_from_yaml(args.group_config)
+            print(f"[INFO] Loaded group config: {args.group_config}")
+            print(f"[INFO] Groups: {group_order[0]} vs {group_order[1]}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load group config: {e}")
+            sys.exit(1)
+
+    if not args.open_arms or not args.closed_arms:
+        print("[ERROR] You must provide both --open-arms and --closed-arms")
+        sys.exit(1)
+    try:
+        open_arm_names = _parse_open_arms_text(args.open_arms)
+    except Exception as e:
+        print(f"[ERROR] Invalid --open-arms: {e}")
+        sys.exit(1)
+    try:
+        closed_arm_names = _parse_open_arms_text(args.closed_arms)
+    except Exception as e:
+        print(f"[ERROR] Invalid --closed-arms: {e}")
+        sys.exit(1)
+
+    generate_epm_bar_charts(
+        directory=directory,
+        output_path=args.output,
+        group_map=group_map,
+        group_order=group_order,
+        open_arm_names=open_arm_names,
+        closed_arm_names=closed_arm_names,
+    )
 

@@ -186,6 +186,133 @@ Output:
 - Batch mode: one `*_TrackingOverlay.mp4` per video
 - Both modes read the same YAML config by default
 
+### EPM-specific statistics and figures
+
+#### ROI statistics (config-driven)
+
+Scripts:
+
+- `visualization/GenerateROIEntryStatistics.py`
+- `visualization/GenerateROIStatistics.py`
+
+Generate entry statistics:
+
+```bash
+pixi run -e location-tracker python visualization/GenerateROIEntryStatistics.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+```
+
+Generate time statistics:
+
+```bash
+pixi run -e location-tracker python visualization/GenerateROIStatistics.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+```
+
+Outputs:
+
+- `ROI_Entry_Statistics.csv`
+- `ROI_Statistics_Detailed.csv`
+- `ROI_Statistics_Summary.csv`
+
+#### EPM bar charts (supports --config)
+
+Script: `visualization/GenerateEPMBarCharts.py`
+
+Use external group YAML:
+
+```bash
+pixi run -e location-tracker python visualization/GenerateEPMBarCharts.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --group-config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\grouping.yml" --open-arms "Top,Bottom" --closed-arms "Left,Right"
+```
+
+Group YAML format (`grouping.yml`):
+
+```yaml
+groups:
+  WT:
+    - 1-12
+    - 1-14
+  pp3r1:
+    - 1-1
+    - 1-2
+```
+
+Rules:
+
+- Top-level key must be `groups`.
+- Exactly two groups are required for this bar chart.
+- Video IDs can be either stem (`1-1`) or filename (`1-1.mp4`).
+- Every video in ROI statistics must appear in this grouping file.
+- You must provide both `--open-arms` and `--closed-arms`.
+- `--open-arms` and `--closed-arms` must use ROI names that exist in your ROI stats columns.
+- Open and closed arm ROI lists must not overlap.
+
+Notes:
+
+- Reads `ROI_Entry_Statistics.csv` and `ROI_Statistics_Detailed.csv` in `project.video_dir`.
+- Output files: `EPM_BarCharts.png` and `EPM_BarCharts.pdf`.
+
+#### EPM transformed heatmaps (YAML-driven)
+
+Script: `visualization/GenerateTransformedTrajectoryHeatmap.py`
+
+Batch mode:
+
+```bash
+pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+```
+
+Single video mode:
+
+```bash
+pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --video "1-5.mp4"
+```
+
+Vertex modes:
+
+- `--vertex-mode config`: use `epm_transform.original_vertices` in YAML.
+- `--vertex-mode functional`: derive 12 vertices from `functional_roi` (`Left/Right/Top/Bottom` required).
+- `--vertex-mode gui`: open modern GUI on a random project frame (after applying YAML crop) with all functional ROI overlays; a standard EPM reference panel is shown, and selected reference points are highlighted synchronously while picking.
+- GUI point picking is restricted to functional ROI vertices (clicks snap to nearest functional vertex).
+- GUI supports `Undo` to revert the last point selection.
+- Hard requirement: this script requires every `functional_roi.regions[*].vertices` polygon to have exactly 4 points.
+
+GUI example (save picked vertices back to YAML):
+
+```bash
+pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --vertex-mode gui --save-picked-vertices
+```
+
+Required YAML section for `--vertex-mode config`:
+
+```yaml
+epm_transform:
+  original_vertices:
+    - [x0, y0]
+    - [x1, y1]
+    - [x2, y2]
+    - [x3, y3]
+    - [x4, y4]
+    - [x5, y5]
+    - [x6, y6]
+    - [x7, y7]
+    - [x8, y8]
+    - [x9, y9]
+    - [x10, y10]
+    - [x11, y11]
+  center_size_px: 119
+  arm_length_ratio: 5.0
+  canvas_size: 1409
+  num_bins: 80
+  sigma: 1.2
+  colormap: viridis
+  skip_seconds: 15
+  fps_default: 25.0
+```
+
+Outputs per video:
+
+- `*_EPM_Heatmap_Standard.png/.pdf`
+- `*_TransformedTrajectory.csv`
+
 ---
 
 ## 5) Required files for YAML workflow
