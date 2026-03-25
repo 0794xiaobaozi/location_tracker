@@ -333,3 +333,20 @@ Outputs per video:
 ```bash
 pixi run -e location-tracker python -c "import customtkinter, cv2; print('ok')"
 ```
+
+---
+
+## 7) Citation and License
+
+This project includes tracking logic adapted from `ezTrack`.
+
+If you use this project in research, please also cite ezTrack:
+
+Pennington ZT, Dong Z, Feng Y, Vetere LM, Page-Harley L, Shuman T, Cai DJ (2019).  
+ezTrack: An open-source video analysis pipeline for the investigation of animal behavior.  
+Scientific Reports, 9(1): 19979.
+
+License:
+
+- This project is distributed under the GNU GPLv3.
+- See `LICENSE` for details.

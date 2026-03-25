@@ -1,0 +1,15 @@
+Location Tracker
+Copyright (C) 2026
+
+This project is licensed under the GNU General Public License v3.0.
+
+SPDX-License-Identifier: GPL-3.0-only
+
+This project includes tracking logic adapted from ezTrack:
+
+Pennington ZT, Dong Z, Feng Y, Vetere LM, Page-Harley L, Shuman T, Cai DJ (2019).
+ezTrack: An open-source video analysis pipeline for the investigation of animal behavior.
+Scientific Reports, 9(1): 19979.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see https://www.gnu.org/licenses/gpl-3.0.html
