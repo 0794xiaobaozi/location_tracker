@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "dir_video_a_cam3_left": "F:/path/to/cam3_left_folder",
+  "dir_video_b_cam2_right": "F:/path/to/cam2_right_folder",
+  "output_dir": "F:/path/to/merged_output",
+  "clips": [
+    {
+      "filename": "1-1.mp4",
+      "start_frame_a": 0,
+      "start_frame_b": 0
+    }
+  ]
+}

@@ -23,6 +23,46 @@ Avoid `py ...` to prevent interpreter mismatch.
 
 Command examples below use paths **relative to the repository root**. The folder name `my_project` is a placeholder—use your own dataset directory name in both `video/...` and `video/cropped_video/...`.
 
+### Dual camera merge (alignment GUI + batch ffmpeg)
+
+**1. Folder paths (`dual_camera_merge_paths.json`)**
+
+On first run, `dual_camera_merge_paths.json` is **created automatically** from `dual_camera_merge_paths.example.json` if missing. Edit the three paths in that JSON (the file is gitignored).
+
+- `dir_video_a_cam3_left` — folder with **cam3** MP4s (shown **left** after rotation).
+- `dir_video_b_cam2_right` — folder with **cam2** MP4s (**right** half).
+- `output_dir` — where merged files are written (used in the saved plan and by the merge script).
+
+**2. GUI — build a merge plan**
+
+Script: `MergeDualCameraVideosGUI.py`
+
+Clips are **paired by identical file names** in both folders (e.g. `1-1.mp4`), sorted in natural order. The GUI walks that list (Previous / Next). For each clip you set **start frame A** and **start frame B**. The GUI **does not run ffmpeg**; it saves **`dual_camera_merge_jobs.json`** (gitignored) with those alignments for every clip in the queue. Use **保存合并配置** or **保存并下一段**. To fix **one** clip without rewriting the whole list, jump to it (**跳到片段** dropdown) and use **仅更新当前片段到配置** (requires an existing jobs file).
+
+**3. Batch merge from the plan**
+
+Script: `MergeDualCameraVideos.py` reads `dual_camera_merge_jobs.json` and runs ffmpeg for each clip. Requires **ffmpeg** on your `PATH`.
+
+```bash
+pixi run -e location-tracker python MergeDualCameraVideos.py
+pixi run -e location-tracker python MergeDualCameraVideos.py --dry-run
+pixi run -e location-tracker python MergeDualCameraVideos.py --clip "1-1.mp4"
+```
+
+Rotation / layout (in the merge script):
+
+- **Video A (cam3)** → left half, **transpose=1** (90° clockwise).
+- **Video B (cam2)** → right half, **transpose=2** (90° counter-clockwise).
+- Then **hstack**. No audio in the export.
+
+```bash
+pixi run -e location-tracker python MergeDualCameraVideosGUI.py
+pixi run -e location-tracker merge-dual-camera-gui
+pixi run -e location-tracker merge-dual-camera
+```
+
+Optional: `--config path\to\paths.json` for the GUI if the paths file is not next to the script. For the merge script: `--jobs path\to\dual_camera_merge_jobs.json`.
+
 ---
 
 ## 2) Crop Workflow

@@ -30,3 +30,8 @@ pyyaml = "*"
 [feature.location-tracker.pypi-dependencies]
 ipykernel = "*"
 customtkinter = "*"
+
+# GUI + OpenCV live in this env; default workspace has no Python on PATH, so run with: pixi run -e location-tracker merge-dual-camera-gui
+[feature.location-tracker.tasks]
+merge-dual-camera-gui = "python MergeDualCameraVideosGUI.py"
+merge-dual-camera = "python MergeDualCameraVideos.py"

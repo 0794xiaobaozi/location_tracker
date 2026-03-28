@@ -18,3 +18,8 @@ video/
 *.csv
 __pycache__/
 *.pyc
+
+# local paths for MergeDualCameraVideosGUI (copy from dual_camera_merge_paths.example.json)
+dual_camera_merge_paths.json
+# merge plan written by GUI (see dual_camera_merge_jobs.example.json)
+dual_camera_merge_jobs.json

@@ -528,10 +528,15 @@ def _pick_vertices_gui(video_dir, functional_regions, crop=None, save_to_config=
     app.bind("c", lambda _e: on_clear())
     app.bind("C", lambda _e: on_clear())
 
+    def on_close():
+        on_cancel()
+
+    app.protocol("WM_DELETE_WINDOW", on_close)
+
     redraw()
     app.mainloop()
     if result["vertices"] is None:
-        raise RuntimeError("Vertex picking canceled.")
+        return None
     return result["vertices"]
 
 
@@ -751,6 +756,14 @@ def main():
             save_to_config=bool(args.save_picked_vertices),
             config_path=args.config,
         )
+        if src_vertices is None:
+            print(
+                "[ABORT] Vertex picking was canceled (Esc, Cancel, or closed window without Save).\n"
+                "        Pick all 12 points on the left frame (reference on the right), then click "
+                "'Save 12 Vertices' or press Enter.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         print("[INFO] Using vertices selected from GUI.")
         if args.save_picked_vertices:
             _save_vertices_to_config(args.config, src_vertices, cfg)
