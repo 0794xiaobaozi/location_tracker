@@ -21,6 +21,8 @@ pixi run -e location-tracker python <script>.py ...
 
 Avoid `py ...` to prevent interpreter mismatch.
 
+Command examples below use paths **relative to the repository root**. The folder name `my_project` is a placeholder—use your own dataset directory name in both `video/...` and `video/cropped_video/...`.
+
 ---
 
 ## 2) Crop Workflow
@@ -32,7 +34,7 @@ Use these two scripts together.
 Script: `SelectVideoIntervals.py`
 
 ```bash
-pixi run -e location-tracker python SelectVideoIntervals.py -d "F:\Neuro\ezTrack\LocationTracking\video\EPM_later" --auto-5min --gui modern
+pixi run -e location-tracker python SelectVideoIntervals.py -d "video/my_project" --auto-5min --gui modern
 ```
 
 Output:
@@ -62,7 +64,7 @@ Modern GUI shortcuts:
 Script: `CropVideosFromIntervals.py`
 
 ```bash
-pixi run -e location-tracker python CropVideosFromIntervals.py --directory "F:\Neuro\ezTrack\LocationTracking\video\EPM_later"
+pixi run -e location-tracker python CropVideosFromIntervals.py --directory "video/my_project"
 ```
 
 Output:
@@ -92,7 +94,7 @@ Tracking supports two entry modes:
 Script: `CreateLocationTrackingYAMLTemplate.py`
 
 ```bash
-pixi run -e location-tracker python CreateLocationTrackingYAMLTemplate.py --output ".\project_tracking_config.yml" --video-dir "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later"
+pixi run -e location-tracker python CreateLocationTrackingYAMLTemplate.py --output "./project_tracking_config.yml" --video-dir "video/cropped_video/my_project"
 ```
 
 #### Step A2 Edit YAML in GUI (optional)
@@ -108,7 +110,7 @@ pixi run -e location-tracker python BuildTrackingConfigGUI.py
 Script: `RunLocationTrackingFromYAML.py`
 
 ```bash
-pixi run -e location-tracker python RunLocationTrackingFromYAML.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+pixi run -e location-tracker python RunLocationTrackingFromYAML.py --config "video/cropped_video/my_project/project_tracking_config.yml"
 ```
 
 YAML run options:
@@ -122,7 +124,7 @@ YAML run options:
 Script: `RunLocationTrackingBatch.py`
 
 ```bash
-pixi run -e location-tracker python RunLocationTrackingBatch.py --directory "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later" --ftype mp4 --loc-thresh 99.0 --parallel
+pixi run -e location-tracker python RunLocationTrackingBatch.py --directory "video/cropped_video/my_project" --ftype mp4 --loc-thresh 99.0 --parallel
 ```
 
 Useful options:
@@ -150,7 +152,7 @@ Script: `visualization/GenerateTrajectoryImages.py`
 Recommended command (load settings from project YAML):
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateTrajectoryImages.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+pixi run -e location-tracker python visualization/GenerateTrajectoryImages.py --config "video/cropped_video/my_project/project_tracking_config.yml"
 ```
 
 Output:
@@ -171,13 +173,13 @@ Script: `visualization/GenerateTrackingOverlayVideos.py`
 Single video (still reads YAML for crop/video_dir):
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateTrackingOverlayVideos.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --video "1-5.mp4"
+pixi run -e location-tracker python visualization/GenerateTrackingOverlayVideos.py --config "video/cropped_video/my_project/project_tracking_config.yml" --video "1-5.mp4"
 ```
 
 Batch (all videos from YAML `project.video_dir`):
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateTrackingOverlayVideos.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+pixi run -e location-tracker python visualization/GenerateTrackingOverlayVideos.py --config "video/cropped_video/my_project/project_tracking_config.yml"
 ```
 
 Output:
@@ -198,13 +200,13 @@ Scripts:
 Generate entry statistics:
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateROIEntryStatistics.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+pixi run -e location-tracker python visualization/GenerateROIEntryStatistics.py --config "video/cropped_video/my_project/project_tracking_config.yml"
 ```
 
 Generate time statistics:
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateROIStatistics.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+pixi run -e location-tracker python visualization/GenerateROIStatistics.py --config "video/cropped_video/my_project/project_tracking_config.yml"
 ```
 
 Outputs:
@@ -220,7 +222,7 @@ Script: `visualization/GenerateEPMBarCharts.py`
 Use external group YAML:
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateEPMBarCharts.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --group-config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\grouping.yml" --open-arms "Top,Bottom" --closed-arms "Left,Right"
+pixi run -e location-tracker python visualization/GenerateEPMBarCharts.py --config "video/cropped_video/my_project/project_tracking_config.yml" --group-config "video/cropped_video/my_project/grouping.yml" --open-arms "Top,Bottom" --closed-arms "Left,Right"
 ```
 
 Group YAML format (`grouping.yml`):
@@ -257,13 +259,13 @@ Script: `visualization/GenerateTransformedTrajectoryHeatmap.py`
 Batch mode:
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml"
+pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "video/cropped_video/my_project/project_tracking_config.yml"
 ```
 
 Single video mode:
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --video "1-5.mp4"
+pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "video/cropped_video/my_project/project_tracking_config.yml" --video "1-5.mp4"
 ```
 
 Vertex modes:
@@ -278,7 +280,7 @@ Vertex modes:
 GUI example (save picked vertices back to YAML):
 
 ```bash
-pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "F:\Neuro\ezTrack\LocationTracking\video\cropped_video\EPM_later\project_tracking_config.yml" --vertex-mode gui --save-picked-vertices
+pixi run -e location-tracker python visualization/GenerateTransformedTrajectoryHeatmap.py --config "video/cropped_video/my_project/project_tracking_config.yml" --vertex-mode gui --save-picked-vertices
 ```
 
 Required YAML section for `--vertex-mode config`:
