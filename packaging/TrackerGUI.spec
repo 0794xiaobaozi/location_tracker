@@ -6,6 +6,7 @@ from PyInstaller.utils.hooks import collect_data_files
 
 
 project_root = os.path.abspath(os.path.join(SPECPATH, ".."))
+icon_file = os.path.join(project_root, "packaging", "assets", "tracker.ico")
 
 datas = [
     (os.path.join(project_root, "LICENSE"), "."),
@@ -78,6 +79,7 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,
+    icon=icon_file,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
