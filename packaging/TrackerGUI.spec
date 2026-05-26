@@ -9,6 +9,8 @@ project_root = os.path.abspath(os.path.join(SPECPATH, ".."))
 
 datas = [
     (os.path.join(project_root, "LICENSE"), "."),
+    (os.path.join(project_root, "packaging", "cv2", "config.py"), "cv2"),
+    (os.path.join(project_root, "packaging", "cv2", "config-3.12.py"), "cv2"),
 ]
 binaries = []
 hiddenimports = [
