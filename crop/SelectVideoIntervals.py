@@ -31,6 +31,18 @@ from typing import Dict, Optional, List
 # 不再需要配置加载功能
 
 
+def _hidden_subprocess_kwargs() -> Dict:
+    if os.name != "nt" or os.environ.get("TRACKER_HIDE_SUBPROCESS_WINDOWS") != "1":
+        return {}
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = subprocess.SW_HIDE
+    return {
+        "startupinfo": startupinfo,
+        "creationflags": subprocess.CREATE_NO_WINDOW,
+    }
+
+
 def find_video_files(directory: str, extensions: List[str] = None, exclude_files: List[str] = None) -> List[str]:
     """
     在目录中查找视频文件
@@ -100,7 +112,13 @@ def get_video_info_ffprobe(video_path: str) -> Optional[Dict]:
             "-of", "default=noprint_wrappers=1:nokey=1",
             video_path
         ]
-        result_duration = subprocess.run(cmd_duration, capture_output=True, text=True, check=True)
+        result_duration = subprocess.run(
+            cmd_duration,
+            capture_output=True,
+            text=True,
+            check=True,
+            **_hidden_subprocess_kwargs(),
+        )
         duration = float(result_duration.stdout.strip())
         
         # 获取 FPS
@@ -111,7 +129,13 @@ def get_video_info_ffprobe(video_path: str) -> Optional[Dict]:
             "-of", "default=noprint_wrappers=1:nokey=1",
             video_path
         ]
-        result_fps = subprocess.run(cmd_fps, capture_output=True, text=True, check=True)
+        result_fps = subprocess.run(
+            cmd_fps,
+            capture_output=True,
+            text=True,
+            check=True,
+            **_hidden_subprocess_kwargs(),
+        )
         fps_str = result_fps.stdout.strip()
         if "/" in fps_str:
             num, den = fps_str.split("/")
@@ -127,7 +151,13 @@ def get_video_info_ffprobe(video_path: str) -> Optional[Dict]:
             "-of", "default=noprint_wrappers=1:nokey=1",
             video_path
         ]
-        result_size = subprocess.run(cmd_size, capture_output=True, text=True, check=True)
+        result_size = subprocess.run(
+            cmd_size,
+            capture_output=True,
+            text=True,
+            check=True,
+            **_hidden_subprocess_kwargs(),
+        )
         lines = result_size.stdout.strip().split('\n')
         width = int(lines[0]) if len(lines) > 0 and lines[0] else 0
         height = int(lines[1]) if len(lines) > 1 and lines[1] else 0
@@ -197,6 +227,30 @@ def validate_video_info(video_path: str, video_info: Dict) -> bool:
         return True  # 如果验证失败，假设信息合理
 
 
+def get_video_info_opencv(video_path: str) -> Optional[Dict]:
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    duration = total_frames / fps if fps > 0 else 0
+    cap.release()
+
+    video_info = {
+        'total_frames': total_frames,
+        'fps': fps,
+        'width': width,
+        'height': height,
+        'duration': duration
+    }
+
+    validate_video_info(video_path, video_info)
+    return video_info
+
+
 def get_video_info(video_path: str) -> Dict:
     """
     获取视频信息
@@ -207,6 +261,9 @@ def get_video_info(video_path: str) -> Dict:
     Returns:
         包含视频信息的字典
     """
+    if os.environ.get("TRACKER_VIDEO_INFO_BACKEND", "").lower() == "opencv":
+        return get_video_info_opencv(video_path)
+
     # 首先尝试使用 ffprobe（更准确）
     ffprobe_info = get_video_info_ffprobe(video_path)
     if ffprobe_info:
@@ -217,30 +274,7 @@ def get_video_info(video_path: str) -> Dict:
         return ffprobe_info
     
     # 如果 ffprobe 不可用，使用 OpenCV
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        return None
-    
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    duration = total_frames / fps if fps > 0 else 0
-    
-    cap.release()
-    
-    video_info = {
-        'total_frames': total_frames,
-        'fps': fps,
-        'width': width,
-        'height': height,
-        'duration': duration
-    }
-    
-    # 验证 OpenCV 的结果
-    validate_video_info(video_path, video_info)
-    
-    return video_info
+    return get_video_info_opencv(video_path)
 
 
 def format_time(seconds: float) -> str:

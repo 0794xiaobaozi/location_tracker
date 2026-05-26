@@ -27,6 +27,18 @@ def build_internal_command(internal_arg, extra_args):
     return [sys.executable, os.path.abspath(__file__), internal_arg, *extra_args]
 
 
+def subprocess_startup_kwargs():
+    if os.name != "nt":
+        return {}
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = subprocess.SW_HIDE
+    return {
+        "startupinfo": startupinfo,
+        "creationflags": subprocess.CREATE_NO_WINDOW,
+    }
+
+
 def run_internal_command():
     if len(sys.argv) < 2:
         return False
@@ -139,7 +151,17 @@ class CropWorkflowPanel:
             self._log(f"[ERROR] Crop failed: {e}")
 
     def _run_command(self, cmd):
-        proc = subprocess.run(cmd, cwd=os.path.dirname(__file__), text=True, capture_output=True)
+        env = os.environ.copy()
+        env["TRACKER_HIDE_SUBPROCESS_WINDOWS"] = "1"
+        env["TRACKER_VIDEO_INFO_BACKEND"] = "opencv"
+        proc = subprocess.run(
+            cmd,
+            cwd=os.path.dirname(__file__),
+            text=True,
+            capture_output=True,
+            env=env,
+            **subprocess_startup_kwargs(),
+        )
         self.parent.after(0, self._finish_command, proc.returncode, proc.stdout, proc.stderr)
 
     def _finish_command(self, returncode, stdout, stderr):
@@ -179,19 +201,24 @@ class TrackerGUI:
         self.panels = {}
         self._show_panel("crop")
 
-    def _clear_content(self):
-        for child in self.content.winfo_children():
-            child.destroy()
-
     def _show_panel(self, name):
-        self._clear_content()
         self.crop_button.configure(fg_color="#1F6AA5" if name == "crop" else "transparent")
         self.freeze_button.configure(fg_color="#1F6AA5" if name == "freeze" else "transparent")
 
-        if name == "crop":
-            CropWorkflowPanel(self.content)
-        elif name == "freeze":
-            FreezeConfigBuilderApp(root=self.content, embedded=True)
+        for panel in self.panels.values():
+            panel.pack_forget()
+
+        if name not in self.panels:
+            panel_frame = ctk.CTkFrame(self.content)
+            if name == "crop":
+                CropWorkflowPanel(panel_frame)
+            elif name == "freeze":
+                FreezeConfigBuilderApp(root=panel_frame, embedded=True)
+            else:
+                return
+            self.panels[name] = panel_frame
+
+        self.panels[name].pack(fill="both", expand=True)
 
     def run(self):
         self.root.mainloop()
