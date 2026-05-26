@@ -43,6 +43,29 @@ def _hidden_subprocess_kwargs() -> Dict:
     }
 
 
+def app_icon_path() -> Optional[str]:
+    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates = [
+        os.path.join(base_dir, "assets", "tracker.ico"),
+        os.path.join(base_dir, "packaging", "assets", "tracker.ico"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "packaging", "assets", "tracker.ico"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def set_window_icon(window) -> None:
+    icon_path = app_icon_path()
+    if not icon_path:
+        return
+    try:
+        window.iconbitmap(icon_path)
+    except Exception:
+        pass
+
+
 def find_video_files(directory: str, extensions: List[str] = None, exclude_files: List[str] = None) -> List[str]:
     """
     在目录中查找视频文件
@@ -852,6 +875,7 @@ class ModernIntervalSelector:
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
         self.root = ctk.CTk()
+        set_window_icon(self.root)
         if _modern_window_geometry[0]:
             self.root.geometry(_modern_window_geometry[0])
         else:

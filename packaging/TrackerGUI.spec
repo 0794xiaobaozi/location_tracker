@@ -10,6 +10,7 @@ icon_file = os.path.join(project_root, "packaging", "assets", "tracker.ico")
 
 datas = [
     (os.path.join(project_root, "LICENSE"), "."),
+    (icon_file, "assets"),
     (os.path.join(project_root, "packaging", "cv2", "config.py"), "cv2"),
     (os.path.join(project_root, "packaging", "cv2", "config-3.12.py"), "cv2"),
 ]

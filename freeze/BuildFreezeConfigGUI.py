@@ -25,6 +25,29 @@ if SCRIPT_DIR not in sys.path:
 from AutoFreezeCalibration import auto_calibrate_motion_cutoff
 
 
+def app_icon_path():
+    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    candidates = [
+        os.path.join(base_dir, "assets", "tracker.ico"),
+        os.path.join(base_dir, "packaging", "assets", "tracker.ico"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "packaging", "assets", "tracker.ico"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def set_window_icon(window):
+    icon_path = app_icon_path()
+    if not icon_path:
+        return
+    try:
+        window.iconbitmap(icon_path)
+    except Exception:
+        pass
+
+
 class CropBox:
     def __init__(self, crop):
         self.data = {
@@ -50,6 +73,7 @@ class FreezePreviewPlayer:
 
         self.window = ctk.CTkToplevel(app.root)
         self.window.title("Freeze Preview: Last 60 Seconds")
+        set_window_icon(self.window)
         self.window.geometry("920x760")
         self.window.protocol("WM_DELETE_WINDOW", self._close)
 
@@ -320,6 +344,7 @@ class FreezeConfigBuilderApp:
             ctk.set_default_color_theme("blue")
             self.root = ctk.CTk()
             self.root.title("Freeze Analysis Config Builder")
+            set_window_icon(self.root)
             self.root.geometry("1040x860")
             self.root.minsize(920, 680)
         else:
@@ -675,6 +700,7 @@ class FreezeConfigBuilderApp:
     def _show_calibration_plot(self, stats):
         plot_window = ctk.CTkToplevel(self.root)
         plot_window.title("Freeze Calibration Plot")
+        set_window_icon(plot_window)
         plot_window.geometry("820x560")
         plot_window.lift()
 

@@ -21,6 +21,29 @@ def ensure_standard_streams():
         sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 
+def app_icon_path():
+    base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    candidates = [
+        os.path.join(base_dir, "assets", "tracker.ico"),
+        os.path.join(base_dir, "packaging", "assets", "tracker.ico"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "packaging", "assets", "tracker.ico"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def set_window_icon(window):
+    icon_path = app_icon_path()
+    if not icon_path:
+        return
+    try:
+        window.iconbitmap(icon_path)
+    except Exception:
+        pass
+
+
 def build_internal_command(internal_arg, extra_args):
     if getattr(sys, "frozen", False):
         return [sys.executable, internal_arg, *extra_args]
@@ -182,6 +205,7 @@ class TrackerGUI:
 
         self.root = ctk.CTk()
         self.root.title("Tracker Workflow GUI")
+        set_window_icon(self.root)
         self.root.geometry("1240x900")
         self.root.minsize(1040, 720)
 
