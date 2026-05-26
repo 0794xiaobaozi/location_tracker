@@ -14,6 +14,13 @@ import customtkinter as ctk
 from freeze.BuildFreezeConfigGUI import FreezeConfigBuilderApp
 
 
+def ensure_standard_streams():
+    if getattr(sys, "stdout", None) is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if getattr(sys, "stderr", None) is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+
 def build_internal_command(internal_arg, extra_args):
     if getattr(sys, "frozen", False):
         return [sys.executable, internal_arg, *extra_args]
@@ -191,5 +198,6 @@ class TrackerGUI:
 
 
 if __name__ == "__main__":
+    ensure_standard_streams()
     if not run_internal_command():
         TrackerGUI().run()

@@ -37,6 +37,12 @@ from io import BytesIO
 warnings.filterwarnings("ignore")
 
 
+def _progress(iterable):
+    if getattr(sys, "stderr", None) is None:
+        return iterable
+    return tqdm(iterable)
+
+
 def _require_holoviews():
     import holoviews as hv
     from holoviews import streams
@@ -287,7 +293,7 @@ def Measure_Motion (video_dict,mt_cutoff,SIGMA=1):
 
     #Loop through frames to detect frame by frame differences
     time.sleep(.2) #allow printing
-    for x in tqdm(range(1,len(Motion))):
+    for x in _progress(range(1,len(Motion))):
         frame_old = frame_new
         ret, frame_new = cap.read()
         if ret == True:
