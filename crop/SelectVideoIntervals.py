@@ -1100,6 +1100,9 @@ Examples:
 
   # 自动模式：从开头取5分钟
   python SelectVideoIntervals.py --directory ./Videos --auto-5min
+
+  # 自动模式：自定义时长，选择start后end自动=start+120秒
+  python SelectVideoIntervals.py --directory ./Videos --auto-duration-seconds 120
         """
     )
     
@@ -1117,6 +1120,10 @@ Examples:
     parser.add_argument('--auto-10min',
                        action='store_true',
                        help='Interactive: choose start only, end auto = start + 10 minutes')
+    parser.add_argument('--auto-duration-seconds',
+                       type=float,
+                       default=None,
+                       help='Interactive: choose start only, end auto = start + this many seconds')
     parser.add_argument('--gui',
                        choices=['modern', 'classic'],
                        default='modern',
@@ -1197,7 +1204,16 @@ Examples:
         
         # 选择区间
         try:
-            if args.auto_5min:
+            auto_duration_secs = args.auto_duration_seconds
+            if auto_duration_secs is not None and auto_duration_secs <= 0:
+                raise ValueError("--auto-duration-seconds must be greater than 0")
+
+            if auto_duration_secs is not None:
+                if args.gui == 'modern':
+                    interval = select_interval_modern(video_path, video_info, auto_duration_secs=auto_duration_secs)
+                else:
+                    interval = select_interval(video_path, video_info, auto_duration_secs=auto_duration_secs)
+            elif args.auto_5min:
                 if args.gui == 'modern':
                     interval = select_interval_modern(video_path, video_info, auto_duration_secs=300)
                 else:

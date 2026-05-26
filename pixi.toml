@@ -9,7 +9,7 @@ version = "0.1.0"
 location-tracker = { features = ["location-tracker"] }
 
 [tasks]
-select-intervals = "python SelectVideoIntervals.py"
+select-intervals = "python crop/SelectVideoIntervals.py"
 
 [dependencies]
 

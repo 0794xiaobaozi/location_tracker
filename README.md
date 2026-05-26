@@ -3,7 +3,7 @@
 This repo has two parts:
 
 1. **Crop workflow** (select interval -> export cropped videos)
-2. **Tracking workflow** (run location tracking on cropped videos)
+2. **Analysis workflows** (run location tracking or freeze analysis on cropped videos)
 
 ---
 
@@ -21,6 +21,14 @@ pixi run -e location-tracker python <script>.py ...
 
 Avoid `py ...` to prevent interpreter mismatch.
 
+Open the combined workflow GUI:
+
+```bash
+pixi run -e location-tracker python TrackerGUI.py
+```
+
+The left navigation switches between **Crop** and **Freeze Analysis**. The right panel shows the selected workflow.
+
 Command examples below use paths **relative to the repository root**. The folder name `my_project` is a placeholder—use your own dataset directory name in both `video/...` and `video/cropped_video/...`.
 
 ---
@@ -31,10 +39,10 @@ Use these two scripts together.
 
 ### Step 2.1 Select video intervals
 
-Script: `SelectVideoIntervals.py`
+Script: `crop/SelectVideoIntervals.py`
 
 ```bash
-pixi run -e location-tracker python SelectVideoIntervals.py -d "video/my_project" --auto-5min --gui modern
+pixi run -e location-tracker python crop/SelectVideoIntervals.py -d "video/my_project" --auto-5min --gui modern
 ```
 
 Output:
@@ -45,8 +53,14 @@ Common options:
 
 - `--gui modern|classic`
 - `--auto-5min` / `--auto-10min`
+- `--auto-duration-seconds <seconds>` (custom auto duration; select START only, END is START + duration)
 - `--exclude <file>` (repeatable)
 - `--output <path>`
+
+In the combined GUI (`TrackerGUI.py`), Crop has two modes:
+
+- **Auto duration from START**: choose START in the selector; END is calculated from the duration field and unit (`minutes` or `seconds`).
+- **Manual START and END**: choose both START and END in the selector; the duration field is ignored.
 
 Modern GUI shortcuts:
 
@@ -61,10 +75,10 @@ Modern GUI shortcuts:
 
 ### Step 2.2 Crop videos from intervals
 
-Script: `CropVideosFromIntervals.py`
+Script: `crop/CropVideosFromIntervals.py`
 
 ```bash
-pixi run -e location-tracker python CropVideosFromIntervals.py --directory "video/my_project"
+pixi run -e location-tracker python crop/CropVideosFromIntervals.py --directory "video/my_project"
 ```
 
 Output:
@@ -80,37 +94,37 @@ Common options:
 
 ---
 
-## 3) Tracking Workflow
+## 3) A Location Tracking Workflow
 
 Tracking supports two entry modes:
 
-- **Simple CLI mode**: `RunLocationTrackingBatch.py`
-- **YAML mode** (recommended for reproducibility): template/GUI + `RunLocationTrackingFromYAML.py`
+- **Simple CLI mode**: `tracking/RunLocationTrackingBatch.py`
+- **YAML mode** (recommended for reproducibility): template/GUI + `tracking/RunLocationTrackingFromYAML.py`
 
 ### Option A: YAML tracking (recommended)
 
 #### Step A1 Generate YAML template
 
-Script: `CreateLocationTrackingYAMLTemplate.py`
+Script: `tracking/CreateLocationTrackingYAMLTemplate.py`
 
 ```bash
-pixi run -e location-tracker python CreateLocationTrackingYAMLTemplate.py --output "./project_tracking_config.yml" --video-dir "video/cropped_video/my_project"
+pixi run -e location-tracker python tracking/CreateLocationTrackingYAMLTemplate.py --output "./project_tracking_config.yml" --video-dir "video/cropped_video/my_project"
 ```
 
 #### Step A2 Edit YAML in GUI (optional)
 
-Script: `BuildTrackingConfigGUI.py`
+Script: `tracking/BuildTrackingConfigGUI.py`
 
 ```bash
-pixi run -e location-tracker python BuildTrackingConfigGUI.py
+pixi run -e location-tracker python tracking/BuildTrackingConfigGUI.py
 ```
 
 #### Step A3 Run tracking from YAML
 
-Script: `RunLocationTrackingFromYAML.py`
+Script: `tracking/RunLocationTrackingFromYAML.py`
 
 ```bash
-pixi run -e location-tracker python RunLocationTrackingFromYAML.py --config "video/cropped_video/my_project/project_tracking_config.yml"
+pixi run -e location-tracker python tracking/RunLocationTrackingFromYAML.py --config "video/cropped_video/my_project/project_tracking_config.yml"
 ```
 
 YAML run options:
@@ -121,10 +135,10 @@ YAML run options:
 
 ### Option B: Simple CLI tracking
 
-Script: `RunLocationTrackingBatch.py`
+Script: `tracking/RunLocationTrackingBatch.py`
 
 ```bash
-pixi run -e location-tracker python RunLocationTrackingBatch.py --directory "video/cropped_video/my_project" --ftype mp4 --loc-thresh 99.0 --parallel
+pixi run -e location-tracker python tracking/RunLocationTrackingBatch.py --directory "video/cropped_video/my_project" --ftype mp4 --loc-thresh 99.0 --parallel
 ```
 
 Useful options:
@@ -140,6 +154,85 @@ Useful options:
 
 - Per video: `*_LocationOutput.csv`
 - Batch summary: `BatchSummary.csv`
+
+---
+
+## 3) B Freeze Analysis Workflow
+
+Freeze analysis is being built as a separate workflow from location tracking. The current framework follows ezTrack's freeze-analysis logic: calibrate a grayscale motion cutoff from an empty-chamber video, measure frame-to-frame motion in behavior videos, then score freezing when motion stays below a threshold for a minimum duration.
+
+### Step B1 Generate freeze YAML template
+
+Script: `freeze/CreateFreezeAnalysisYAMLTemplate.py`
+
+```bash
+pixi run -e location-tracker python freeze/CreateFreezeAnalysisYAMLTemplate.py --output "video/cropped_video/my_project/project_freeze_config.yml" --video-dir "video/cropped_video/my_project" --calibration-video "video/cropped_video/my_project/empty_chamber.mp4"
+```
+
+### Step B2 Edit YAML in GUI (optional)
+
+Script: `freeze/BuildFreezeConfigGUI.py`
+
+```bash
+pixi run -e location-tracker python freeze/BuildFreezeConfigGUI.py
+```
+
+You can also open the same empty GUI from the freeze runner:
+
+```bash
+pixi run -e location-tracker python freeze/RunFreezeAnalysisFromYAML.py
+```
+
+Open an existing freeze YAML directly:
+
+```bash
+pixi run -e location-tracker python freeze/BuildFreezeConfigGUI.py --config "video/cropped_video/my_project/analysis/project_freeze_config.yml"
+```
+
+GUI workflow:
+
+1. Set **Project Videos** to the folder containing the behavior videos.
+2. Set **Calibration Video** to the empty-chamber video.
+3. Click **Initialize Project** to create `analysis/project_freeze_config.yml` in the selected project folder.
+4. Optional: click **Select Crop From First Video** and enable crop if cables, walls, or reflections should be excluded.
+5. Click **Auto Calibrate From Empty Video**. The GUI fills `motion_cutoff` and opens a plot showing the empty-box pixel-difference distribution, the selected percentile, and the final cutoff.
+6. Set initial `freeze_threshold` and `min_duration_seconds`.
+7. Click **Preview / Tune Freeze Parameters**. The GUI picks a behavior video, extracts the final 60 seconds of the configured analysis range, computes motion/freezing, and opens a player with the current freeze/moving decision overlaid on the video. Adjust `freeze_threshold` and `min_duration_seconds` inside the preview window, click **Recompute**, then **Apply To Main GUI** when the overlay looks reasonable.
+8. Add summary bins in the table if needed. **Insert Bin** adds one row next to the previous bin with a default 60-second duration; edit name/start/end by hand.
+9. Click **Save YAML**, or click **Save YAML & Run Batch Analysis** to save the current GUI settings and immediately start batch analysis.
+
+Key fields:
+
+- `calibration.motion_cutoff`: estimated from the empty-chamber video by the GUI, or set manually.
+- `calibration.percentile` and `calibration.cutoff_multiplier`: GUI auto-calibration uses `motion_cutoff = cutoff_multiplier * percentile(diff)`. Defaults are `99.99` and `2.8`.
+- `freeze.freeze_threshold`: maximum motion pixels allowed for a frame to be considered freezing.
+- `freeze.min_duration_seconds`: minimum continuous low-motion duration required.
+- `Preview / Tune Freeze Parameters`: uses the final 60 seconds of a non-calibration behavior video so these two freeze parameters can be adjusted visually before batch analysis.
+- `summary.bins`: named time windows in seconds for summary output. Empty bins means one `all` summary.
+- `Save YAML & Run Batch Analysis`: saves the current GUI settings to the active YAML file, then runs `freeze/RunFreezeAnalysisFromYAML.py --config <that-yaml>`.
+
+### Step B3 Run freeze analysis
+
+Script: `freeze/RunFreezeAnalysisFromYAML.py`
+
+Run analysis by passing a config. If no config is passed, this script opens the GUI instead.
+
+```bash
+pixi run -e location-tracker python freeze/RunFreezeAnalysisFromYAML.py --config "video/cropped_video/my_project/analysis/project_freeze_config.yml"
+```
+
+Calibration only:
+
+```bash
+pixi run -e location-tracker python freeze/RunFreezeAnalysisFromYAML.py --config "video/cropped_video/my_project/analysis/project_freeze_config.yml" --calibrate-only
+```
+
+In the GUI, `Auto Calibrate From Empty Video` estimates and fills `calibration.motion_cutoff` directly using percentile multiplier calibration. The `--calibrate-only` command prints the same calibration values without running batch analysis.
+
+### Freeze outputs
+
+- Per video: `*_FreezingOutput.csv`
+- Batch summary: `FreezeBatchSummary.csv`
 
 ---
 
@@ -319,10 +412,15 @@ Outputs per video:
 
 ## 5) Required files for YAML workflow
 
-- `LocationTracking_Functions.py`
-- `RunLocationTrackingFromYAML.py`
-- `CreateLocationTrackingYAMLTemplate.py`
-- `BuildTrackingConfigGUI.py`
+- `tracking/LocationTracking_Functions.py`
+- `tracking/RunLocationTrackingFromYAML.py`
+- `tracking/CreateLocationTrackingYAMLTemplate.py`
+- `tracking/BuildTrackingConfigGUI.py`
+- `freeze/FreezeAnalysis_Functions.py`
+- `freeze/AutoFreezeCalibration.py`
+- `freeze/RunFreezeAnalysisFromYAML.py`
+- `freeze/CreateFreezeAnalysisYAMLTemplate.py`
+- `freeze/BuildFreezeConfigGUI.py`
 - `pixi.toml` / `pixi.lock`
 
 ---
