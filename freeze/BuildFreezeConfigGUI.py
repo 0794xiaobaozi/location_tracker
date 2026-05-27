@@ -48,6 +48,18 @@ def set_window_icon(window):
         pass
 
 
+def subprocess_startup_kwargs():
+    if os.name != "nt":
+        return {}
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = subprocess.SW_HIDE
+    return {
+        "startupinfo": startupinfo,
+        "creationflags": subprocess.CREATE_NO_WINDOW,
+    }
+
+
 class CropBox:
     def __init__(self, crop):
         self.data = {
@@ -1110,22 +1122,25 @@ class FreezeConfigBuilderApp:
             cmd = [sys.executable, "--internal-run-freeze", "--config", config_path]
         else:
             script_path = os.path.join(os.path.dirname(__file__), "RunFreezeAnalysisFromYAML.py")
-            cmd = [sys.executable, script_path, "--config", config_path]
-        proc = subprocess.run(
+            cmd = [sys.executable, "-u", script_path, "--config", config_path]
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        proc = subprocess.Popen(
             cmd,
             cwd=os.path.dirname(os.path.dirname(__file__)),
             text=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            env=env,
+            **subprocess_startup_kwargs(),
         )
-        self.root.after(0, self._finish_batch_analysis, proc.returncode, proc.stdout, proc.stderr)
+        for line in proc.stdout or []:
+            self.root.after(0, self._log, line.rstrip())
+        returncode = proc.wait()
+        self.root.after(0, self._finish_batch_analysis, returncode)
 
-    def _finish_batch_analysis(self, returncode, stdout, stderr):
-        if stdout:
-            for line in stdout.strip().splitlines():
-                self._log(line)
-        if stderr:
-            for line in stderr.strip().splitlines():
-                self._log(line)
+    def _finish_batch_analysis(self, returncode):
         if returncode == 0:
             self._log("[OK] Batch analysis finished.")
             messagebox.showinfo("Batch Analysis", "Batch analysis finished.")

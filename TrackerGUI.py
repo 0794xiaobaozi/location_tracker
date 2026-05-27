@@ -47,7 +47,7 @@ def set_window_icon(window):
 def build_internal_command(internal_arg, extra_args):
     if getattr(sys, "frozen", False):
         return [sys.executable, internal_arg, *extra_args]
-    return [sys.executable, os.path.abspath(__file__), internal_arg, *extra_args]
+    return [sys.executable, "-u", os.path.abspath(__file__), internal_arg, *extra_args]
 
 
 def subprocess_startup_kwargs():
@@ -177,21 +177,23 @@ class CropWorkflowPanel:
         env = os.environ.copy()
         env["TRACKER_HIDE_SUBPROCESS_WINDOWS"] = "1"
         env["TRACKER_VIDEO_INFO_BACKEND"] = "opencv"
-        proc = subprocess.run(
+        env["PYTHONUNBUFFERED"] = "1"
+        proc = subprocess.Popen(
             cmd,
             cwd=os.path.dirname(__file__),
             text=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
             env=env,
             **subprocess_startup_kwargs(),
         )
-        self.parent.after(0, self._finish_command, proc.returncode, proc.stdout, proc.stderr)
+        for line in proc.stdout or []:
+            self.parent.after(0, self._log, line.rstrip())
+        returncode = proc.wait()
+        self.parent.after(0, self._finish_command, returncode)
 
-    def _finish_command(self, returncode, stdout, stderr):
-        for text in (stdout, stderr):
-            if text:
-                for line in text.strip().splitlines():
-                    self._log(line)
+    def _finish_command(self, returncode):
         if returncode == 0:
             self._log("[OK] Command finished.")
         else:
